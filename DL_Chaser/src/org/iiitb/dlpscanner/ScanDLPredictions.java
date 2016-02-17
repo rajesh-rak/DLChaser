@@ -32,6 +32,7 @@ import org.apache.commons.io.filefilter.WildcardFileFilter;
  */
 public class ScanDLPredictions {
 
+	private static String confFolderPath;
 	private static String folder;
 	private static String filesWC;
 	private static String exclusionsStr;
@@ -57,9 +58,33 @@ public class ScanDLPredictions {
 	private static long totalNodesSelected = 0;
 
 	/**
-	 * @param args
+	 * The entire behavior of this program is controlled by dlpscanner.properties file,
+	 * before running this program make sure the dlpscanner.properties is configured
+	 * correctly
+	 * 
+	 * The main method can be called by passing the folder containing 
+	 * dlpscanner.properties as parameter, if dlpscanner.properties is not
+	 * available in the classpath.
+	 * 
+	 * If the dlpscanner.properties is available in classpath the program
+	 * will pick that even if the folder path is specified
+	 * 
+	 * @param args folder containing dlpscanner.properties file
 	 */
 	public static void main(String[] args) {
+		if (args.length > 0)
+			confFolderPath = args[0];
+		if (!Conf.init(confFolderPath)) {
+			System.out.println("Error loading the dlpscanner.properties file"
+					+ "\n\nTry running it by passing the correct location of"
+					+ "\nthe folder path to the file as parameter"
+					+ "\n\n ...program will terminate!");
+		} else {
+			execute();
+		}	
+	}
+	
+	private static void execute() {
 		init();
 		if (verbose) System.out.println("Folder: " + folder);
 		if (verbose)System.out.println("filesWC: " + filesWC);
@@ -81,11 +106,11 @@ public class ScanDLPredictions {
 			System.out.println("ERROR OCCURED: ");
 			e.printStackTrace();
 		}
-		
 	}
+	
 	private static void init () {
 		folder = Conf.getValue("PREDICTION_RESULTS_FOLDER");
-		filesWC = Conf.getValue("FILES_WILDCARD");
+		filesWC = Conf.getValue("FILES");
 		exclusionsStr = Conf.getValue("PACKAGE_EXCLUSIONS");
 		cycles = Conf.getValue("CYCLES");
 		nhDepth = Integer.parseInt(Conf.getValue("NEIGHBOURHOOD_DEPTH"));
