@@ -5,8 +5,10 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.LineNumberReader;
 import java.io.OutputStream;
 import java.text.DateFormat;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,13 +24,19 @@ import org.iiitb.dlpscanner.vo.NodeInfo;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
+import org.apache.commons.collections4.CollectionUtils;
 /**
  * 
  */
 
 /**
- * @author rajesh.rkumar
- *
+ * @author Rajesh Kumar R (rajesh.rak@gmail.com) IIIT-B MS2013007
+ * 
+ * This program parses the deadlock predictions made by stalemate tool
+ * and filters them based on the criteria specified in the dlpscanner.properties
+ * The output of this program includes the metadata used for short-listing a specific 
+ * prediction and the list of classes that can be used for generating test cases
+ * which will aid in validating if the prediction is a true positive
  */
 public class ScanDLPredictions {
 
@@ -46,8 +54,8 @@ public class ScanDLPredictions {
 	private static String outFolder;
 	private static Collection <String> cyclesList = new ArrayList<String>();
 	private static Collection <String> exclusionsList = new ArrayList<String>();
-	private static long fileLineNo = 0;
-	private static boolean verbose = false;
+	private static Collection <Collection> selectedClassList = new ArrayList<Collection>();
+ 	private static boolean verbose = false;
 	private static long selectedNodeCount = 0;
 	private static Collection<String> logLinesHeader = new ArrayList<String>();
 	private static Collection<String> logLines = new ArrayList<String>();
@@ -56,6 +64,8 @@ public class ScanDLPredictions {
 	private static int totalFilesProcessed = 0;
 	private static long totalNodesProcessed = 0;
 	private static long totalNodesSelected = 0;
+	private static long totalLinesProcessed = 0;
+	private static long fileLinesProcessed = 0;
 
 	/**
 	 * The entire behavior of this program is controlled by dlpscanner.properties file,
@@ -148,9 +158,12 @@ public class ScanDLPredictions {
 			OutputStream opStream  = FileUtils.openOutputStream(execLogFile);
 			opStream.close();
 			logLinesHeader.add("Total Files Processed:\t" + totalFilesProcessed);
+			logLinesHeader.add("Total Lines Processed:\t" + 
+					new DecimalFormat("#,###").format(totalLinesProcessed));
 			logLinesHeader.add("Total Nodes Processed:\t" + totalNodesProcessed);
 			logLinesHeader.add("Total Nodes Selected:\t" + totalNodesSelected);
-			logLinesHeader.add("Total Processing Time:\t" + (runEndTime- runStartTime) + "ms");
+			logLinesHeader.add("Total Processing Time:\t" + 
+					new DecimalFormat("#,###").format((runEndTime- runStartTime)) + "ms");
 			logLinesHeader.add("-------------------------------------");
 			FileUtils.writeLines(execLogFile, logLinesHeader);
 			FileUtils.writeLines(execLogFile, logLines, true);
@@ -171,7 +184,6 @@ public class ScanDLPredictions {
 		for (int i = 0; i < files.length; i++) {
 			File ipFile = files[i];
 			long startTime = System.currentTimeMillis();
-			fileLineNo = 0;
 			//Logs
 			logLines.add("File:\t\t\t" + ipFile.getName());
 			System.out.println("File:\t\t\t" + ipFile.getName());
@@ -179,9 +191,13 @@ public class ScanDLPredictions {
 			processFile(ipFile);
 			long endTime = System.currentTimeMillis();
 			long processedTime = endTime - startTime;
+			totalLinesProcessed = totalLinesProcessed + fileLinesProcessed;
+			fileLinesProcessed = 0;
 			//Logs
-			logLines.add("Processed in: \t\t" + processedTime + "ms");
-			System.out.println("Processed in: \t\t" + processedTime + "ms");
+			logLines.add("Processed in: \t\t" + 
+					new DecimalFormat("#,###").format(processedTime) + "ms");
+			System.out.println("Processed in: \t\t" + 
+					new DecimalFormat("#,###").format(processedTime) + "ms");
 			System.out.println("------" );
 			logLines.add("------" );
 		}
@@ -189,22 +205,21 @@ public class ScanDLPredictions {
 	
 	private static void processFile(File ipFile) throws Exception {
 		String ipFileName = ipFile.getName();
-		BufferedReader fReader = new BufferedReader(new FileReader(ipFile)); 
+		LineNumberReader fReader = new LineNumberReader(new FileReader(ipFile)); 
 		String fileLine;
 		int nodeCount = 0;
 		int filteredNodeCount = 0;
 		String foundNodeName = "";
 		NodeInfo nodeInfo = null;
-		long foundLineNo = 0;
+		int foundLineNo = 0;
 		while ((fileLine = fReader.readLine())!=null) {
-			fileLineNo++;
 			for (String str: cyclesList) {
 				if (fileLine.contains("<" + str)) {
 					nodeCount++;
-					foundLineNo = fileLineNo;
+					foundLineNo = fReader.getLineNumber();
 					foundNodeName = str;
 					//Process Found Node
-					if (verbose)System.out.println("Node Found @ Line No: " + fileLineNo);
+					if (verbose)System.out.println("Node Found @ Line No: " + foundLineNo);
 					nodeInfo = processNode(fReader, foundNodeName, fileLine);
 					nodeInfo.setPredictionFile(ipFileName);
 					nodeInfo.setFileLineNo(foundLineNo);
@@ -218,6 +233,7 @@ public class ScanDLPredictions {
 									+ nodeInfo.getFileLineNo());
 						} else {
 							filteredNodeCount++;
+							selectedClassList.add(nodeInfo.getClassNames());
 							writeNodeToFile(nodeInfo);
 						}	
 					}
@@ -225,14 +241,45 @@ public class ScanDLPredictions {
 				}
 			}
 		}
+		fileLinesProcessed = fReader.getLineNumber();
 		fReader.close();
 		totalNodesProcessed = totalNodesProcessed + nodeCount;
 		totalNodesSelected = totalNodesSelected + filteredNodeCount;
+		logLines.add("Lines Processed:\t" + 
+				new DecimalFormat("#,###").format(fileLinesProcessed));
 		logLines.add("Nodes Processed:\t" + nodeCount);
 		logLines.add("Nodes Selected:\t\t" + filteredNodeCount);
 		System.out.println("Nodes Processed:\t" + nodeCount 
 						+ "\n" + "Nodes Selected:\t\t" + filteredNodeCount);
 		
+	}
+	
+	/**
+	 * Returns true if a node is required to be shorlisted based on
+	 * the criteria specified in the dlpscanner.properties file
+	 * 
+	 * @param aNodeInfo The Node to be validated for inclusion
+	 * @return true if a node is short listed, else false
+	 */
+	private static boolean isNodeShortListed(NodeInfo aNodeInfo) {
+		boolean result = true;
+		Collection<String> classNames = aNodeInfo.getClassNames();
+		//Check for Neighborhood Density
+		if (aNodeInfo.getNhDensity() > nhDensity) {
+			return false;
+		}
+		//Check for Neighborhood Depth
+		if (aNodeInfo.getNhDepth() > nhDepth) {
+			return false;
+		}
+		//Check if we need to exclude any packages
+		if (containsSubStr(classNames, exclusionsList)) {
+			return false;
+		}
+		//Check for duplicates if required
+		//TODO complete the coding ...
+		
+		return result;
 	}
 	
 	private static void writeNodeToFile(NodeInfo nodeInfo) throws IOException {
@@ -278,7 +325,6 @@ public class ScanDLPredictions {
 		cNodeInfo.setClassNames(new HashSet<String>());
 		
 		do {
-			
 			if (fileLine.contains(thNodeTxt)) {
 				tNodeInfo = processThreadNode(fReader, fileLine);
 				//Add processed ThreadNode to the Cycles Node Info
@@ -290,7 +336,7 @@ public class ScanDLPredictions {
 				}
 			}
 		} while (!(fileLine = fReader.readLine()).trim().contains(nodeTerminator) 
-				&& !fileLine.contains("<" + cyclesTxt ) && fileLineNo++ != 0);
+				&& !fileLine.contains("<" + cyclesTxt ));
 		
 		return cNodeInfo;
 	}
@@ -304,8 +350,9 @@ public class ScanDLPredictions {
 	    Pattern pattern1 = Pattern.compile("[\\w+\\.\\$]+:");
 		String matchedTxt;
 		int callDepth = 0;
+		
 		do {
-		    //Checking for Pattern-1
+			//Checking for Pattern-1
 			Matcher mat = pattern1.matcher(fileLine);
 		    while (mat.find()){
 		      callDepth++;	
@@ -321,7 +368,7 @@ public class ScanDLPredictions {
 		      }
 		    }
 		} while (!(fileLine = fReader.readLine()).trim().contains(thNodeTerminator)
-				&& !fileLine.contains("<" + threadTxt ) && fileLineNo++ != 0);
+				&& !fileLine.contains("<" + threadTxt ));
 		tNodeInfo.setClassNames(classNames);
 		tNodeInfo.setNhDepth(callDepth);
 		return tNodeInfo;

@@ -8,6 +8,10 @@ import java.net.URLClassLoader;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
+/**
+ * @author Rajesh Kumar R (rajesh.rak@gmail.com) IIIT-B MS2013007
+ *
+ */
 public class Conf {
 	
 	private static String DLP_SCANNER_CONF = "dlpscanner";

@@ -2,6 +2,10 @@ package org.iiitb.dlpscanner.vo;
 
 import java.util.Collection;
 
+/**
+ * @author Rajesh Kumar R (rajesh.rak@gmail.com) IIIT-B MS2013007
+ *
+ */
 public class NodeInfo {
 
 	private String predictionFile;
