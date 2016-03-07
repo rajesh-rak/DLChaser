@@ -49,11 +49,13 @@ public class ScanDLPredictions {
 	private static int nhDensity;
 	private static String cyclesTxt;
 	private static String threadTxt;
+	private static boolean skipDuplicates;
 	private static boolean dryRun;
 	private static boolean excludeInnerClass;
 	private static String outFolder;
 	private static Collection <String> cyclesList = new ArrayList<String>();
 	private static Collection <String> exclusionsList = new ArrayList<String>();
+	@SuppressWarnings("rawtypes")
 	private static Collection <Collection> selectedClassList = new ArrayList<Collection>();
  	private static boolean verbose = false;
 	private static long selectedNodeCount = 0;
@@ -132,6 +134,7 @@ public class ScanDLPredictions {
 		cyclesTxt = Conf.getValue("CYCLES_TEXT");
 		threadTxt = Conf.getValue("THREAD_TEXT");
 		verbose = Conf.getValue("VERBOSE").equals("ON");
+		skipDuplicates = Conf.getValue("SKIP_DUPLICATES").equals("ON");
 		StringTokenizer st;
 		st = new StringTokenizer(cycles,",");
 		while (st.hasMoreTokens()) {
@@ -224,19 +227,19 @@ public class ScanDLPredictions {
 					nodeInfo.setPredictionFile(ipFileName);
 					nodeInfo.setFileLineNo(foundLineNo);
 					//Check for Filtering and Write Files
-					if (nodeInfo.getNhDensity() <= nhDensity
-							&& nodeInfo.getNhDepth() <= nhDepth) {
-						if (containsSubStr(nodeInfo.getClassNames(), exclusionsList)) {
-							if (verbose)System.out.println("Node Excluded: " 
-									+ nodeInfo.getPredictionFile()
-									+ " Line No: "
-									+ nodeInfo.getFileLineNo());
-						} else {
-							filteredNodeCount++;
-							selectedClassList.add(nodeInfo.getClassNames());
-							writeNodeToFile(nodeInfo);
-						}	
+					if (isNodeShortListed(nodeInfo)) {
+						filteredNodeCount++;
+						selectedClassList.add(nodeInfo.getClassNames());
+						writeNodeToFile(nodeInfo);
+					} else {
+						if (verbose)System.out.println("Node Excluded: " 
+								+ nodeInfo.getPredictionFile()
+								+ " Line No: "
+								+ nodeInfo.getFileLineNo()
+								+ " NH Dp: " + nodeInfo.getNhDepth()
+								+ " NH Dn: " + nodeInfo.getNhDensity());
 					}
+					
 					break;
 				}
 			}
@@ -277,8 +280,24 @@ public class ScanDLPredictions {
 			return false;
 		}
 		//Check for duplicates if required
-		//TODO complete the coding ...
-		
+		if (skipDuplicates) {
+			@SuppressWarnings("rawtypes")
+			Iterator<Collection> itr = selectedClassList.iterator();
+			while (itr.hasNext()) {
+				@SuppressWarnings("unchecked")
+				Collection <String> prevItem = itr.next();
+				if (CollectionUtils.containsAll(prevItem, classNames)) {
+					if (verbose)System.out.println("Duplicate Detected: " 
+							+ aNodeInfo.getPredictionFile()
+							+ " Line No: "
+							+ aNodeInfo.getFileLineNo()
+							+ "\n " + prevItem);
+					
+					result = false;
+					break;
+				}
+			}
+		}
 		return result;
 	}
 	

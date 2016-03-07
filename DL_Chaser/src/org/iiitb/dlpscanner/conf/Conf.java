@@ -33,7 +33,6 @@ public class Conf {
 				rb = ResourceBundle.getBundle(DLP_SCANNER_CONF,Locale.getDefault(),clsLoader);
 				result = true;
 			} catch (MalformedURLException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 				return result;
 			}
