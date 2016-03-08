@@ -53,6 +53,7 @@ public class ScanDLPredictions {
 	private static boolean dryRun;
 	private static boolean excludeInnerClass;
 	private static String outFolder;
+	private static String outFolderFile;
 	private static Collection <String> cyclesList = new ArrayList<String>();
 	private static Collection <String> exclusionsList = new ArrayList<String>();
 	@SuppressWarnings("rawtypes")
@@ -128,6 +129,7 @@ public class ScanDLPredictions {
 		nhDepth = Integer.parseInt(Conf.getValue("NEIGHBOURHOOD_DEPTH"));
 		nhDensity = Integer.parseInt(Conf.getValue("NEIGHBOURHOOD_DENSITY"));
 		outFolder = Conf.getValue("OUT_FOLDER");
+		outFolderFile = Conf.getValue("OUT_FOLDER_FILE");
 		dryRun = Conf.getValue("DRY_RUN").equals("ON");
 		excludeInnerClass = Conf.getValue("EXCLUDE_INNER_CLASS").equals("ON");
 		outFolder = Conf.getValue("OUT_FOLDER");
@@ -170,6 +172,10 @@ public class ScanDLPredictions {
 			logLinesHeader.add("-------------------------------------");
 			FileUtils.writeLines(execLogFile, logLinesHeader);
 			FileUtils.writeLines(execLogFile, logLines, true);
+			
+			//Write the Folder Name File
+			File folderNameFile = new File(outFolderFile);
+			FileUtils.writeStringToFile(folderNameFile, outFolder, "UTF-8");
 		}	
 	}
 
