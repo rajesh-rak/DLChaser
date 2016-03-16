@@ -69,6 +69,8 @@ public class ScanDLPredictions {
 	private static long totalNodesSelected = 0;
 	private static long totalLinesProcessed = 0;
 	private static long fileLinesProcessed = 0;
+	private static int duplicatesSkipped = 0;
+	private static int totalDuplicates = 0;
 
 	/**
 	 * The entire behavior of this program is controlled by dlpscanner.properties file,
@@ -167,6 +169,7 @@ public class ScanDLPredictions {
 					new DecimalFormat("#,###").format(totalLinesProcessed));
 			logLinesHeader.add("Total Nodes Processed:\t" + totalNodesProcessed);
 			logLinesHeader.add("Total Nodes Selected:\t" + totalNodesSelected);
+			if (skipDuplicates) logLinesHeader.add("Total Duplicates:\t" + totalDuplicates);
 			logLinesHeader.add("Total Processing Time:\t" + 
 					new DecimalFormat("#,###").format((runEndTime- runStartTime)) + "ms");
 			logLinesHeader.add("-------------------------------------");
@@ -175,7 +178,7 @@ public class ScanDLPredictions {
 			
 			//Write the Folder Name File
 			File folderNameFile = new File(outFolderFile);
-			FileUtils.writeStringToFile(folderNameFile, outFolder, "UTF-8");
+			FileUtils.writeStringToFile(folderNameFile, outFolder + "\n", "UTF-8");
 		}	
 	}
 
@@ -201,7 +204,7 @@ public class ScanDLPredictions {
 			long endTime = System.currentTimeMillis();
 			long processedTime = endTime - startTime;
 			totalLinesProcessed = totalLinesProcessed + fileLinesProcessed;
-			fileLinesProcessed = 0;
+			totalDuplicates = totalDuplicates + duplicatesSkipped;
 			//Logs
 			logLines.add("Processed in: \t\t" + 
 					new DecimalFormat("#,###").format(processedTime) + "ms");
@@ -217,6 +220,8 @@ public class ScanDLPredictions {
 		LineNumberReader fReader = new LineNumberReader(new FileReader(ipFile)); 
 		String fileLine;
 		int nodeCount = 0;
+		duplicatesSkipped = 0;
+		fileLinesProcessed = 0;
 		int filteredNodeCount = 0;
 		String foundNodeName = "";
 		NodeInfo nodeInfo = null;
@@ -258,6 +263,7 @@ public class ScanDLPredictions {
 				new DecimalFormat("#,###").format(fileLinesProcessed));
 		logLines.add("Nodes Processed:\t" + nodeCount);
 		logLines.add("Nodes Selected:\t\t" + filteredNodeCount);
+		if (skipDuplicates) logLines.add("Duplicates skipped:\t" + duplicatesSkipped);
 		System.out.println("Nodes Processed:\t" + nodeCount 
 						+ "\n" + "Nodes Selected:\t\t" + filteredNodeCount);
 		
@@ -299,6 +305,7 @@ public class ScanDLPredictions {
 							+ aNodeInfo.getFileLineNo()
 							+ "\n " + prevItem);
 					
+					duplicatesSkipped++;
 					result = false;
 					break;
 				}
